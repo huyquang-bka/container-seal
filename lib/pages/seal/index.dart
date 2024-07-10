@@ -130,12 +130,12 @@ class _SealPageState extends State<SealPage> {
   }
 
   String _getSeal(List<String> listText) {
-    // filter seal which line contains 6 numbers or 7 numbers
-    final seal = listText.firstWhere(
-        (element) =>
-            RegExp(r'^[0-9]{6}$').hasMatch(element) ||
-            RegExp(r'^[0-9]{7}$').hasMatch(element),
-        orElse: () => '');
+    // converts 0 to 0 and filter seal which line contains >= 6 numbers
+    listText = listText
+        .map((e) => e.replaceAll(RegExp(r'[oO]'), '0'))
+        .where((element) => element.contains(RegExp(r'\d{6,}')))
+        .toList();
+    final seal = listText.isNotEmpty ? listText.first : '';
     return seal;
   }
 
