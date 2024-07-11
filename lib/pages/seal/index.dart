@@ -24,7 +24,6 @@ class _SealPageState extends State<SealPage> {
   late MQTTClient _mqttClient;
   String laneId = "";
   Color? _borderColor;
-  Icon? _statusIcon;
 
   // MQTT
   String broker = 'broker.hivemq.com';
@@ -49,10 +48,10 @@ class _SealPageState extends State<SealPage> {
 
   void _loadTopic() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    laneId = prefs.getString('laneId') ?? "test";
+    laneId = prefs.getString('laneId') ?? "";
     // Assume the topic is the same as the clientId
     setState(() {
-      topic = "seal-scanner/lane-$laneId";
+      topic = "container/$laneId";
     });
     _connectMQTT();
   }
@@ -78,7 +77,6 @@ class _SealPageState extends State<SealPage> {
         InputImage inputImage = InputImage.fromFilePath(pickedFile.path);
         textRecognize(inputImage);
         _borderColor = null; // Reset border color
-        _statusIcon = null; // Reset status icon
       }
     });
   }
@@ -102,7 +100,7 @@ class _SealPageState extends State<SealPage> {
   void _sendMessage(String seal) async {
     if (seal.isEmpty || _image.path.isEmpty) {
       showErrorMessage(
-          context: context, message: "Vui lòng chọn ảnh và nhập số seal");
+          context: context, message: "Please choose an image and enter seal");
       return;
     }
     final bytes = _image.readAsBytesSync();
@@ -117,14 +115,12 @@ class _SealPageState extends State<SealPage> {
       // Assume 0 is success status
       setState(() {
         _borderColor = Colors.green; // Set to green if success
-        _statusIcon = const Icon(Icons.check, color: Colors.green);
       });
     } catch (e) {
       print("Error send mqtt: $e");
       _mqttClient.disconnect();
       setState(() {
         _borderColor = Colors.red; // Set to red if failure
-        _statusIcon = const Icon(Icons.close, color: Colors.red);
       });
     }
   }
@@ -139,10 +135,17 @@ class _SealPageState extends State<SealPage> {
     return seal;
   }
 
+  void _logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('laneId');
+    Navigator.pushReplacementNamed(context, '/login');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Text('Lane ID: $laneId'),
         actions: <Widget>[
           Row(
@@ -157,7 +160,7 @@ class _SealPageState extends State<SealPage> {
               //icon logout
               IconButton(
                 onPressed: () {
-                  Navigator.pop(context);
+                  _logout();
                 },
                 icon: const Icon(Icons.logout),
               ),
@@ -188,6 +191,7 @@ class _SealPageState extends State<SealPage> {
                           child: PhotoView(
                             imageProvider: FileImage(_image),
                             basePosition: Alignment.center,
+                            initialScale: PhotoViewComputedScale.contained,
                             minScale: PhotoViewComputedScale.contained,
                             maxScale: PhotoViewComputedScale.covered * 2,
                           ),
@@ -204,7 +208,7 @@ class _SealPageState extends State<SealPage> {
                         onPressed: () {
                           getImageFromSource(ImageSource.camera);
                         },
-                        child: Text('Chụp ảnh',
+                        child: Text('Take a photo',
                             style: TextStyle(
                                 color: Theme.of(context)
                                     .colorScheme
@@ -215,7 +219,7 @@ class _SealPageState extends State<SealPage> {
                       onPressed: () {
                         getImageFromSource(ImageSource.gallery);
                       },
-                      child: Text('Chọn ảnh',
+                      child: Text('Choose an image',
                           style: TextStyle(
                               color:
                                   Theme.of(context).colorScheme.inverseSurface,
@@ -247,7 +251,7 @@ class _SealPageState extends State<SealPage> {
                         controller: _textController,
                         textCapitalization: TextCapitalization.characters,
                         decoration: InputDecoration(
-                          labelText: 'Nhập số seal',
+                          labelText: 'Enter seal',
                           border: InputBorder.none,
                           labelStyle: TextStyle(
                               color:
@@ -263,7 +267,7 @@ class _SealPageState extends State<SealPage> {
                       onPressed: () {
                         _sendMessage(_textController.text);
                       },
-                      child: Text('Gửi',
+                      child: Text('Send',
                           style: TextStyle(
                               color:
                                   Theme.of(context).colorScheme.inverseSurface,
