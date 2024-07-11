@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,6 +8,7 @@ import 'package:photo_view/photo_view.dart';
 import 'package:seal_scanner/helpers/builder.dart';
 import 'package:seal_scanner/utils/mqtt.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Import the MQTT client
+import 'package:image/image.dart' as img;
 
 class SealPage extends StatefulWidget {
   const SealPage({super.key});
@@ -23,6 +25,7 @@ class _SealPageState extends State<SealPage> {
   final TextEditingController _textController = TextEditingController();
   late MQTTClient _mqttClient;
   String laneId = "";
+  final int _maxHeight = 500;
   Color? _borderColor;
 
   // MQTT
@@ -71,13 +74,14 @@ class _SealPageState extends State<SealPage> {
 
   Future<void> getImageFromSource(ImageSource source) async {
     final pickedFile = await _picker.pickImage(source: source);
+    if (pickedFile == null) {
+      return;
+    }
     setState(() {
-      if (pickedFile != null) {
-        _image = File(pickedFile.path);
-        InputImage inputImage = InputImage.fromFilePath(pickedFile.path);
-        textRecognize(inputImage);
-        _borderColor = null; // Reset border color
-      }
+      _image = File(pickedFile.path);
+      InputImage inputImage = InputImage.fromFilePath(pickedFile.path);
+      textRecognize(inputImage);
+      _borderColor = null; // Reset border color
     });
   }
 
@@ -103,11 +107,25 @@ class _SealPageState extends State<SealPage> {
           context: context, message: "Please choose an image and enter seal");
       return;
     }
-    final bytes = _image.readAsBytesSync();
+    //resize image if image width > _maxHeight
+    Uint8List imageData = await _image.readAsBytes();
+    img.Image originalImage = img.decodeImage(imageData)!;
+    img.Image resizedImage = originalImage;
+   if (originalImage.height > _maxHeight)
+   {    
+    double aspectRatio = originalImage.height / originalImage.width;
+    int newWidth = (_maxHeight / aspectRatio).round();
+    int newHeight = _maxHeight;
+    resizedImage = img.copyResize(originalImage, width: newWidth, height: newHeight);
+   }
+    
+    // convert image to bytes
+    final bytes = img.encodeJpg(resizedImage);
     final base64Image = base64Encode(bytes);
     Map<String, String> message = {
       'seal': seal,
       'image': base64Image,
+      'messageType': 'seal'
     };
 
     try {
