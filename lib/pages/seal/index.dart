@@ -29,10 +29,10 @@ class _SealPageState extends State<SealPage> {
   Color? _borderColor;
 
   // MQTT
-  String broker = 'broker.hivemq.com';
+  String broker = '192.168.1.194';
   int port = 1883;
-  String username = '';
-  String password = "";
+  String username = 'admin';
+  String password = "admin";
   String topic = "";
   // generate random client id from current time
   String clientId = "mobile-${DateTime.now().millisecondsSinceEpoch}";
@@ -54,7 +54,7 @@ class _SealPageState extends State<SealPage> {
     laneId = prefs.getString('laneId') ?? "";
     // Assume the topic is the same as the clientId
     setState(() {
-      topic = "container/$laneId";
+      topic = "seal/$laneId";
     });
     _connectMQTT();
   }
@@ -123,9 +123,10 @@ class _SealPageState extends State<SealPage> {
     final bytes = img.encodeJpg(resizedImage);
     final base64Image = base64Encode(bytes);
     Map<String, String> message = {
-      'seal': seal,
-      'image': base64Image,
-      'messageType': 'seal'
+      'seal1': seal,
+      'seal2': "",
+      'image1': base64Image,
+      'image2': "",
     };
 
     try {
