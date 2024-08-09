@@ -21,6 +21,7 @@ class _SealPageState extends State<SealPage> {
   File _image = File('');
   String _textRecognized = '';
   final _picker = ImagePicker();
+  img.Image resizedImage = img.Image(0, 0);
   final _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
   final TextEditingController _textController = TextEditingController();
   late MQTTClient _mqttClient;
@@ -78,11 +79,12 @@ class _SealPageState extends State<SealPage> {
       return;
     }
     setState(() {
-      _image = File(pickedFile.path);
-      InputImage inputImage = InputImage.fromFilePath(pickedFile.path);
-      textRecognize(inputImage);
       _borderColor = null; // Reset border color
+      _image = File(pickedFile.path);
     });
+    InputImage inputImage = InputImage.fromFilePath(pickedFile.path);
+    await textRecognize(inputImage);
+    await _resizeImage();
   }
 
   // text recognize use google ml kit
@@ -95,10 +97,24 @@ class _SealPageState extends State<SealPage> {
         listText.add(line.text);
       }
     }
+    _textRecognized = _getSeal(listText);
     setState(() {
-      _textRecognized = _getSeal(listText);
       _textController.text = _textRecognized; // Update the text controller
     });
+  }
+
+  Future<void> _resizeImage() async {
+    //resize image if image width > _maxHeight
+    Uint8List imageData = await _image.readAsBytes();
+    img.Image originalImage = img.decodeImage(imageData)!;
+    resizedImage = originalImage;
+   if (originalImage.height > _maxHeight)
+   {    
+    double aspectRatio = originalImage.height / originalImage.width;
+    int newWidth = (_maxHeight / aspectRatio).round();
+    int newHeight = _maxHeight;
+    resizedImage = img.copyResize(originalImage, width: newWidth, height: newHeight);
+   }
   }
 
   void _sendMessage(String seal) async {
@@ -107,17 +123,6 @@ class _SealPageState extends State<SealPage> {
           context: context, message: "Please choose an image and enter seal");
       return;
     }
-    //resize image if image width > _maxHeight
-    Uint8List imageData = await _image.readAsBytes();
-    img.Image originalImage = img.decodeImage(imageData)!;
-    img.Image resizedImage = originalImage;
-   if (originalImage.height > _maxHeight)
-   {    
-    double aspectRatio = originalImage.height / originalImage.width;
-    int newWidth = (_maxHeight / aspectRatio).round();
-    int newHeight = _maxHeight;
-    resizedImage = img.copyResize(originalImage, width: newWidth, height: newHeight);
-   }
     
     // convert image to bytes
     final bytes = img.encodeJpg(resizedImage);
