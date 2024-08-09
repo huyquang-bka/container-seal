@@ -30,8 +30,8 @@ class _SealPageState extends State<SealPage> {
   Color? _borderColor;
 
   // MQTT
-  String broker = '192.168.1.194';
-  int port = 1883;
+  String broker = '27.72.98.49';
+  int port = 51883;
   String username = 'admin';
   String password = "admin";
   String topic = "";
